@@ -1,0 +1,83 @@
+import pandas as pd
+
+# Read the input data
+df = pd.read_csv("biourja-efzrr-y7i38ed9-input.csv")
+
+# Initial regional forecasts and desired state forecast
+east_old = 2800
+west_old = 2000
+north_old = 1500
+south_old = 6500
+desired_state_forecast = 12000
+
+# Calculate the total initial regional forecasts
+total_initial_region = east_old + west_old + north_old + south_old
+
+# Calculate the adjusted forecasts for each region to meet the desired state forecast
+east = (east_old / total_initial_region) * desired_state_forecast
+west = (west_old / total_initial_region) * desired_state_forecast
+north = (north_old / total_initial_region) * desired_state_forecast
+south = (south_old / total_initial_region) * desired_state_forecast
+
+# Create a new column 'Zone' to store the region information
+df['Zone'] = df['Plant_Name'].str[0]
+
+# Separate the forecasts into region-specific lists
+E = []
+N = []
+W = []
+S = []
+
+for index, row in df.iterrows():
+    direction = row['Zone']
+    value = row['Forecast']
+
+    if direction == 'E':
+        E.append(value)
+    elif direction == 'W':
+        W.append(value)
+    elif direction == 'S':
+        S.append(value)
+    elif direction == 'N':
+        N.append(value)
+
+# Function to calculate the sum of a list
+def sum1(p):
+    q = 0
+    for i in p:
+        q += i
+    return q
+
+# Ensure that the sum of forecasts in each region is not less than the adjusted regional forecasts
+if sum1(E) < east or sum1(W) < west or sum1(S) < south or sum1(N) < north:
+    print("It cannot be redistributed")
+
+# Adjust the forecasts in each region proportionally to meet the desired state forecast
+for i in range(len(E)):
+    E[i] = (E[i] * east) / sum1(E)
+for i in range(len(W)):
+    W[i] = (W[i] * west) / sum1(W)
+for i in range(len(N)):
+    N[i] = (N[i] * north) / sum1(N)
+for i in range(len(S)):
+    S[i] = (S[i] * south) / sum1(S)
+
+# Create dataframes for the adjusted forecasts with "Plant_Name" first
+df1 = pd.DataFrame({'Plant_name': [f'E{i}' for i in range(1, len(E) + 1)], 'Forecast': E})
+df2 = pd.DataFrame({'Plant_name': [f'W{i}' for i in range(1, len(W) + 1)], 'Forecast': W})
+df3 = pd.DataFrame({'Plant_name': [f'S{i}' for i in range(1, len(S) + 1)], 'Forecast': S})
+df4 = pd.DataFrame({'Plant_name': [f'N{i}' for i in range(1, len(N) + 1)], 'Forecast': N})
+
+# Concatenate the dataframes for all regions
+dfs = [df1, df2, df3, df4]
+result_df = pd.concat(dfs, ignore_index=True)
+
+# Calculate the adjusted total state forecast
+adjusted_state_forecast = sum(result_df['Forecast'])
+
+# Adjust the state forecast to match the desired state forecast
+adjustment_factor = desired_state_forecast / adjusted_state_forecast
+result_df['Forecast'] = result_df['Forecast'] * adjustment_factor
+
+# Write the output to a CSV file
+result_df.to_csv('output.csv', index=False)
